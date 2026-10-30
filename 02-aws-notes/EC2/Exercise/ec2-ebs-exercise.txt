@@ -1,0 +1,17 @@
+[root@ip-172-31-93-236 rakesh]#
+[root@ip-172-31-93-236 rakesh]# df -kh
+Filesystem      Size  Used Avail Use% Mounted on
+devtmpfs        4.0M     0  4.0M   0% /dev
+tmpfs           475M     0  475M   0% /dev/shm
+tmpfs           190M  456K  190M   1% /run
+/dev/xvda1      8.0G  1.6G  6.5G  20% /
+tmpfs           475M     0  475M   0% /tmp
+/dev/xvda128     10M  1.3M  8.7M  13% /boot/efi
+tmpfs            95M     0   95M   0% /run/user/1000
+/dev/xvdb       974M   28K  907M   1% /rakesh
+[root@ip-172-31-93-236 rakesh]#
+
+
+1) move volume xvdb from instance 1 to instance 2 in same Availability zone
+2) move volume xvdb from instance 1 to instance 2 in different Availability zone
+3) create ami and restore it
