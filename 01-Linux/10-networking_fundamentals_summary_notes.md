@@ -278,6 +278,8 @@ Communication between web clients and servers typically adheres to the HTTP/HTTP
 
 ## 4. The TCP/IP Model: Packet Creation, Addressing & Encapsulation
 
+![TCP MODEL ANALOGY](Images/Networking/TCP_IP_Layers_Pizza_Delivery.png)
+
 The **TCP/IP model** (commonly structured as a 5-layer or 4-layer model) defines how digital information travels between systems. Before traffic can be monitored or troubleshot, the operating system must assemble, address, and package data through a strict step-by-step pipeline.
 
 ### Core Pointers: What Encapsulation and Decapsulation Do

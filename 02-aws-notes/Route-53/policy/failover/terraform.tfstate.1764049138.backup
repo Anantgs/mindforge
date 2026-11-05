@@ -1,0 +1,779 @@
+{
+  "version": 4,
+  "terraform_version": "1.8.2",
+  "serial": 39,
+  "lineage": "08db4d26-4a45-f0a3-0869-f2da17a4bce9",
+  "outputs": {
+    "demo_instructions": {
+      "value": "  \r\n========================================\r\nRoute 53 Failover Demo - Next Steps\r\n========================================\r\n  \r\n1. Test the instances directly:\r\n   PRIMARY:   http://18.212.223.182\r\n   SECONDARY: http://34.220.42.136\r\n     \r\n2. Test health check endpoints:\r\n   PRIMARY:   http://18.212.223.182/health\r\n   SECONDARY: http://34.220.42.136/health\r\n  \r\n3. Create Route 53 Hosted Zone and Failover Records:\r\n   - Create a hosted zone for your domain\r\n   - Create PRIMARY A record:\r\n     * Name: failover.yourdomain.com\r\n     * Type: A\r\n     * Value: 18.212.223.182\r\n     * Routing Policy: Failover\r\n     * Failover Record Type: Primary\r\n     * Health Check: 3a4f34ce-2b09-4100-aeec-fa62838b1293\r\n     * Record ID: primary-server\r\n     \r\n   - Create SECONDARY A record:\r\n     * Name: failover.yourdomain.com (SAME name)\r\n     * Type: A\r\n     * Value: 34.220.42.136\r\n     * Routing Policy: Failover\r\n     * Failover Record Type: Secondary\r\n     * Health Check: 4787a882-6194-4a63-8546-551e353fe0d3\r\n     * Record ID: secondary-server\r\n  \r\n4. Test Failover:\r\n   - Browse to http://failover.yourdomain.com (should show PRIMARY - green)\r\n   - Stop primary instance: aws ec2 stop-instances --instance-ids i-096e90d6117189010\r\n   - Wait 2-3 minutes for health check to fail\r\n   - Refresh browser (should show SECONDARY - red/orange)\r\n   - Start primary instance: aws ec2 start-instances --instance-ids i-096e90d6117189010\r\n   - Wait for health check to recover\r\n   - Should automatically failback to PRIMARY\r\n  \r\n========================================\r\n",
+      "type": "string"
+    },
+    "primary_health_check_id": {
+      "value": "3a4f34ce-2b09-4100-aeec-fa62838b1293",
+      "type": "string"
+    },
+    "primary_instance_id": {
+      "value": "i-096e90d6117189010",
+      "type": "string"
+    },
+    "primary_public_dns": {
+      "value": "ec2-18-212-223-182.compute-1.amazonaws.com",
+      "type": "string"
+    },
+    "primary_public_ip": {
+      "value": "18.212.223.182",
+      "type": "string"
+    },
+    "secondary_health_check_id": {
+      "value": "4787a882-6194-4a63-8546-551e353fe0d3",
+      "type": "string"
+    },
+    "secondary_instance_id": {
+      "value": "i-0e59d86d507ad3b84",
+      "type": "string"
+    },
+    "secondary_public_dns": {
+      "value": "ec2-34-220-42-136.us-west-2.compute.amazonaws.com",
+      "type": "string"
+    },
+    "secondary_public_ip": {
+      "value": "34.220.42.136",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "data",
+      "type": "aws_ami",
+      "name": "amazon_linux_primary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"].primary",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "allow_unsafe_filter": null,
+            "architecture": "x86_64",
+            "arn": "arn:aws:ec2:us-east-1::image/ami-0156001f0548e90b1",
+            "block_device_mappings": [
+              {
+                "device_name": "/dev/xvda",
+                "ebs": {
+                  "delete_on_termination": "true",
+                  "encrypted": "false",
+                  "iops": "0",
+                  "snapshot_id": "snap-0ea2b465cc56e487c",
+                  "throughput": "0",
+                  "volume_initialization_rate": "0",
+                  "volume_size": "8",
+                  "volume_type": "gp2"
+                },
+                "no_device": "",
+                "virtual_name": ""
+              }
+            ],
+            "boot_mode": "",
+            "creation_date": "2025-11-21T08:38:04.000Z",
+            "deprecation_time": "2026-02-19T00:00:00.000Z",
+            "description": "Amazon Linux 2 AMI 2.0.20251121.0 x86_64 HVM gp2",
+            "ena_support": true,
+            "executable_users": null,
+            "filter": [
+              {
+                "name": "name",
+                "values": [
+                  "amzn2-ami-hvm-*-x86_64-gp2"
+                ]
+              },
+              {
+                "name": "virtualization-type",
+                "values": [
+                  "hvm"
+                ]
+              }
+            ],
+            "hypervisor": "xen",
+            "id": "ami-0156001f0548e90b1",
+            "image_id": "ami-0156001f0548e90b1",
+            "image_location": "amazon/amzn2-ami-hvm-2.0.20251121.0-x86_64-gp2",
+            "image_owner_alias": "amazon",
+            "image_type": "machine",
+            "imds_support": "",
+            "include_deprecated": false,
+            "kernel_id": "",
+            "last_launched_time": "",
+            "most_recent": true,
+            "name": "amzn2-ami-hvm-2.0.20251121.0-x86_64-gp2",
+            "name_regex": null,
+            "owner_id": "137112412989",
+            "owners": [
+              "amazon"
+            ],
+            "platform": "",
+            "platform_details": "Linux/UNIX",
+            "product_codes": [],
+            "public": true,
+            "ramdisk_id": "",
+            "region": "us-east-1",
+            "root_device_name": "/dev/xvda",
+            "root_device_type": "ebs",
+            "root_snapshot_id": "snap-0ea2b465cc56e487c",
+            "sriov_net_support": "simple",
+            "state": "available",
+            "state_reason": {
+              "code": "UNSET",
+              "message": "UNSET"
+            },
+            "tags": {},
+            "timeouts": null,
+            "tpm_support": "",
+            "uefi_data": null,
+            "usage_operation": "RunInstances",
+            "virtualization_type": "hvm"
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_ami",
+      "name": "amazon_linux_secondary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"].secondary",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "allow_unsafe_filter": null,
+            "architecture": "x86_64",
+            "arn": "arn:aws:ec2:us-west-2::image/ami-00c1d63aff2d420ad",
+            "block_device_mappings": [
+              {
+                "device_name": "/dev/xvda",
+                "ebs": {
+                  "delete_on_termination": "true",
+                  "encrypted": "false",
+                  "iops": "0",
+                  "snapshot_id": "snap-0bec99bc8c5da2698",
+                  "throughput": "0",
+                  "volume_initialization_rate": "0",
+                  "volume_size": "8",
+                  "volume_type": "gp2"
+                },
+                "no_device": "",
+                "virtual_name": ""
+              }
+            ],
+            "boot_mode": "",
+            "creation_date": "2025-11-21T08:26:43.000Z",
+            "deprecation_time": "2026-02-19T08:27:00.000Z",
+            "description": "Amazon Linux 2 AMI 2.0.20251121.0 x86_64 HVM gp2",
+            "ena_support": true,
+            "executable_users": null,
+            "filter": [
+              {
+                "name": "name",
+                "values": [
+                  "amzn2-ami-hvm-*-x86_64-gp2"
+                ]
+              },
+              {
+                "name": "virtualization-type",
+                "values": [
+                  "hvm"
+                ]
+              }
+            ],
+            "hypervisor": "xen",
+            "id": "ami-00c1d63aff2d420ad",
+            "image_id": "ami-00c1d63aff2d420ad",
+            "image_location": "amazon/amzn2-ami-hvm-2.0.20251121.0-x86_64-gp2",
+            "image_owner_alias": "amazon",
+            "image_type": "machine",
+            "imds_support": "",
+            "include_deprecated": false,
+            "kernel_id": "",
+            "last_launched_time": "",
+            "most_recent": true,
+            "name": "amzn2-ami-hvm-2.0.20251121.0-x86_64-gp2",
+            "name_regex": null,
+            "owner_id": "137112412989",
+            "owners": [
+              "amazon"
+            ],
+            "platform": "",
+            "platform_details": "Linux/UNIX",
+            "product_codes": [],
+            "public": true,
+            "ramdisk_id": "",
+            "region": "us-west-2",
+            "root_device_name": "/dev/xvda",
+            "root_device_type": "ebs",
+            "root_snapshot_id": "snap-0bec99bc8c5da2698",
+            "sriov_net_support": "simple",
+            "state": "available",
+            "state_reason": {
+              "code": "UNSET",
+              "message": "UNSET"
+            },
+            "tags": {},
+            "timeouts": null,
+            "tpm_support": "",
+            "uefi_data": null,
+            "usage_operation": "RunInstances",
+            "virtualization_type": "hvm"
+          },
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web_primary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"].primary",
+      "instances": [
+        {
+          "schema_version": 2,
+          "attributes": {
+            "ami": "ami-0156001f0548e90b1",
+            "arn": "arn:aws:ec2:us-east-1:666473280079:instance/i-096e90d6117189010",
+            "associate_public_ip_address": true,
+            "availability_zone": "us-east-1c",
+            "capacity_reservation_specification": [
+              {
+                "capacity_reservation_preference": "open",
+                "capacity_reservation_target": []
+              }
+            ],
+            "cpu_options": [
+              {
+                "amd_sev_snp": "",
+                "core_count": 1,
+                "threads_per_core": 1
+              }
+            ],
+            "credit_specification": [
+              {
+                "cpu_credits": "standard"
+              }
+            ],
+            "disable_api_stop": false,
+            "disable_api_termination": false,
+            "ebs_block_device": [],
+            "ebs_optimized": false,
+            "enable_primary_ipv6": null,
+            "enclave_options": [
+              {
+                "enabled": false
+              }
+            ],
+            "ephemeral_block_device": [],
+            "force_destroy": false,
+            "get_password_data": false,
+            "hibernation": false,
+            "host_id": "",
+            "host_resource_group_arn": null,
+            "iam_instance_profile": "",
+            "id": "i-096e90d6117189010",
+            "instance_initiated_shutdown_behavior": "stop",
+            "instance_lifecycle": "",
+            "instance_market_options": [],
+            "instance_state": "running",
+            "instance_type": "t2.micro",
+            "ipv6_address_count": 0,
+            "ipv6_addresses": [],
+            "key_name": "",
+            "launch_template": [],
+            "maintenance_options": [
+              {
+                "auto_recovery": "default"
+              }
+            ],
+            "metadata_options": [
+              {
+                "http_endpoint": "enabled",
+                "http_protocol_ipv6": "disabled",
+                "http_put_response_hop_limit": 1,
+                "http_tokens": "optional",
+                "instance_metadata_tags": "disabled"
+              }
+            ],
+            "monitoring": false,
+            "network_interface": [],
+            "outpost_arn": "",
+            "password_data": "",
+            "placement_group": "",
+            "placement_group_id": "",
+            "placement_partition_number": 0,
+            "primary_network_interface": [
+              {
+                "delete_on_termination": true,
+                "network_interface_id": "eni-0e011b804f941e990"
+              }
+            ],
+            "primary_network_interface_id": "eni-0e011b804f941e990",
+            "private_dns": "ip-172-31-23-109.ec2.internal",
+            "private_dns_name_options": [
+              {
+                "enable_resource_name_dns_a_record": false,
+                "enable_resource_name_dns_aaaa_record": false,
+                "hostname_type": "ip-name"
+              }
+            ],
+            "private_ip": "172.31.23.109",
+            "public_dns": "ec2-18-212-223-182.compute-1.amazonaws.com",
+            "public_ip": "18.212.223.182",
+            "region": "us-east-1",
+            "root_block_device": [
+              {
+                "delete_on_termination": true,
+                "device_name": "/dev/xvda",
+                "encrypted": false,
+                "iops": 100,
+                "kms_key_id": "",
+                "tags": {},
+                "tags_all": {},
+                "throughput": 0,
+                "volume_id": "vol-03e1918d4ebad25ef",
+                "volume_size": 8,
+                "volume_type": "gp2"
+              }
+            ],
+            "secondary_private_ips": [],
+            "security_groups": [
+              "failover-demo-web-sg-primary"
+            ],
+            "source_dest_check": true,
+            "spot_instance_request_id": "",
+            "subnet_id": "subnet-0356778325925b106",
+            "tags": {
+              "Demo": "Route53-Failover",
+              "Name": "failover-demo-primary",
+              "Region": "us-east-1",
+              "Role": "Primary"
+            },
+            "tags_all": {
+              "Demo": "Route53-Failover",
+              "Name": "failover-demo-primary",
+              "Region": "us-east-1",
+              "Role": "Primary"
+            },
+            "tenancy": "default",
+            "timeouts": null,
+            "user_data": "#!/bin/bash\r\nyum update -y\r\nyum install -y httpd\r\nsystemctl start httpd\r\nsystemctl enable httpd\r\n              \r\n# Create health check endpoint\r\ncat \u003e /var/www/html/health \u003c\u003c'HEALTH'\r\nOK\r\nHEALTH\r\n              \r\n# Create main page\r\ncat \u003e /var/www/html/index.html \u003c\u003c'HTML'\r\n\u003c!DOCTYPE html\u003e\r\n\u003chtml\u003e\r\n\u003chead\u003e\r\n    \u003ctitle\u003eFailover Demo - PRIMARY\u003c/title\u003e\r\n    \u003cstyle\u003e\r\n        body {\r\n            font-family: Arial, sans-serif;\r\n            display: flex;\r\n            justify-content: center;\r\n            align-items: center;\r\n            height: 100vh;\r\n            margin: 0;\r\n            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);\r\n            color: white;\r\n        }\r\n        .container {\r\n            text-align: center;\r\n            padding: 40px;\r\n            background: rgba(255, 255, 255, 0.1);\r\n            border-radius: 20px;\r\n            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);\r\n        }\r\n        h1 { font-size: 3em; margin: 0; }\r\n        p { font-size: 1.5em; margin: 20px 0; }\r\n        .status { \r\n            font-weight: bold; \r\n            color: #FFD700;\r\n            font-size: 2em;\r\n        }\r\n        .badge {\r\n            background: #28a745;\r\n            padding: 10px 20px;\r\n            border-radius: 25px;\r\n            display: inline-block;\r\n            margin: 20px 0;\r\n        }\r\n    \u003c/style\u003e\r\n\u003c/head\u003e\r\n\u003cbody\u003e\r\n    \u003cdiv class=\"container\"\u003e\r\n        \u003ch1\u003e🟢 Route 53 Failover Demo\u003c/h1\u003e\r\n        \u003cdiv class=\"badge\"\u003ePRIMARY SERVER\u003c/div\u003e\r\n        \u003cp class=\"status\"\u003eACTIVE\u003c/p\u003e\r\n        \u003cp\u003eRegion: US East (N. Virginia)\u003c/p\u003e\r\n        \u003cp\u003eus-east-1\u003c/p\u003e\r\n        \u003cp style=\"font-size: 1em; margin-top: 30px;\"\u003e\r\n            This is the primary server.\u003cbr\u003e\r\n            All traffic routes here when healthy.\r\n        \u003c/p\u003e\r\n    \u003c/div\u003e\r\n\u003c/body\u003e\r\n\u003c/html\u003e\r\nHTML\r\n",
+            "user_data_base64": null,
+            "user_data_replace_on_change": false,
+            "volume_tags": null,
+            "vpc_security_group_ids": [
+              "sg-0f04c38b8f2c7b871"
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMCwicmVhZCI6OTAwMDAwMDAwMDAwLCJ1cGRhdGUiOjYwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMiJ9",
+          "dependencies": [
+            "aws_security_group.web_sg_primary",
+            "data.aws_ami.amazon_linux_primary"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web_secondary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"].secondary",
+      "instances": [
+        {
+          "schema_version": 2,
+          "attributes": {
+            "ami": "ami-00c1d63aff2d420ad",
+            "arn": "arn:aws:ec2:us-west-2:666473280079:instance/i-0e59d86d507ad3b84",
+            "associate_public_ip_address": true,
+            "availability_zone": "us-west-2a",
+            "capacity_reservation_specification": [
+              {
+                "capacity_reservation_preference": "open",
+                "capacity_reservation_target": []
+              }
+            ],
+            "cpu_options": [
+              {
+                "amd_sev_snp": "",
+                "core_count": 1,
+                "threads_per_core": 1
+              }
+            ],
+            "credit_specification": [
+              {
+                "cpu_credits": "standard"
+              }
+            ],
+            "disable_api_stop": false,
+            "disable_api_termination": false,
+            "ebs_block_device": [],
+            "ebs_optimized": false,
+            "enable_primary_ipv6": null,
+            "enclave_options": [
+              {
+                "enabled": false
+              }
+            ],
+            "ephemeral_block_device": [],
+            "force_destroy": false,
+            "get_password_data": false,
+            "hibernation": false,
+            "host_id": "",
+            "host_resource_group_arn": null,
+            "iam_instance_profile": "",
+            "id": "i-0e59d86d507ad3b84",
+            "instance_initiated_shutdown_behavior": "stop",
+            "instance_lifecycle": "",
+            "instance_market_options": [],
+            "instance_state": "running",
+            "instance_type": "t2.micro",
+            "ipv6_address_count": 0,
+            "ipv6_addresses": [],
+            "key_name": "",
+            "launch_template": [],
+            "maintenance_options": [
+              {
+                "auto_recovery": "default"
+              }
+            ],
+            "metadata_options": [
+              {
+                "http_endpoint": "enabled",
+                "http_protocol_ipv6": "disabled",
+                "http_put_response_hop_limit": 1,
+                "http_tokens": "optional",
+                "instance_metadata_tags": "disabled"
+              }
+            ],
+            "monitoring": false,
+            "network_interface": [],
+            "outpost_arn": "",
+            "password_data": "",
+            "placement_group": "",
+            "placement_group_id": "",
+            "placement_partition_number": 0,
+            "primary_network_interface": [
+              {
+                "delete_on_termination": true,
+                "network_interface_id": "eni-0d98098df0429a12e"
+              }
+            ],
+            "primary_network_interface_id": "eni-0d98098df0429a12e",
+            "private_dns": "ip-172-31-44-230.us-west-2.compute.internal",
+            "private_dns_name_options": [
+              {
+                "enable_resource_name_dns_a_record": false,
+                "enable_resource_name_dns_aaaa_record": false,
+                "hostname_type": "ip-name"
+              }
+            ],
+            "private_ip": "172.31.44.230",
+            "public_dns": "ec2-34-220-42-136.us-west-2.compute.amazonaws.com",
+            "public_ip": "34.220.42.136",
+            "region": "us-west-2",
+            "root_block_device": [
+              {
+                "delete_on_termination": true,
+                "device_name": "/dev/xvda",
+                "encrypted": false,
+                "iops": 100,
+                "kms_key_id": "",
+                "tags": {},
+                "tags_all": {},
+                "throughput": 0,
+                "volume_id": "vol-02250690868e44c55",
+                "volume_size": 8,
+                "volume_type": "gp2"
+              }
+            ],
+            "secondary_private_ips": [],
+            "security_groups": [
+              "failover-demo-web-sg-secondary"
+            ],
+            "source_dest_check": true,
+            "spot_instance_request_id": "",
+            "subnet_id": "subnet-003ef302a97ba20c3",
+            "tags": {
+              "Demo": "Route53-Failover",
+              "Name": "failover-demo-secondary",
+              "Region": "us-west-2",
+              "Role": "Secondary"
+            },
+            "tags_all": {
+              "Demo": "Route53-Failover",
+              "Name": "failover-demo-secondary",
+              "Region": "us-west-2",
+              "Role": "Secondary"
+            },
+            "tenancy": "default",
+            "timeouts": null,
+            "user_data": "#!/bin/bash\r\nyum update -y\r\nyum install -y httpd\r\nsystemctl start httpd\r\nsystemctl enable httpd\r\n              \r\n# Create health check endpoint\r\ncat \u003e /var/www/html/health \u003c\u003c'HEALTH'\r\nOK\r\nHEALTH\r\n              \r\n# Create main page\r\ncat \u003e /var/www/html/index.html \u003c\u003c'HTML'\r\n\u003c!DOCTYPE html\u003e\r\n\u003chtml\u003e\r\n\u003chead\u003e\r\n    \u003ctitle\u003eFailover Demo - SECONDARY\u003c/title\u003e\r\n    \u003cstyle\u003e\r\n        body {\r\n            font-family: Arial, sans-serif;\r\n            display: flex;\r\n            justify-content: center;\r\n            align-items: center;\r\n            height: 100vh;\r\n            margin: 0;\r\n            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);\r\n            color: white;\r\n        }\r\n        .container {\r\n            text-align: center;\r\n            padding: 40px;\r\n            background: rgba(255, 255, 255, 0.1);\r\n            border-radius: 20px;\r\n            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);\r\n        }\r\n        h1 { font-size: 3em; margin: 0; }\r\n        p { font-size: 1.5em; margin: 20px 0; }\r\n        .status { \r\n            font-weight: bold; \r\n            color: #FFD700;\r\n            font-size: 2em;\r\n        }\r\n        .badge {\r\n            background: #dc3545;\r\n            padding: 10px 20px;\r\n            border-radius: 25px;\r\n            display: inline-block;\r\n            margin: 20px 0;\r\n        }\r\n        .alert {\r\n            background: rgba(255, 255, 255, 0.2);\r\n            padding: 15px;\r\n            border-radius: 10px;\r\n            margin-top: 20px;\r\n        }\r\n    \u003c/style\u003e\r\n\u003c/head\u003e\r\n\u003cbody\u003e\r\n    \u003cdiv class=\"container\"\u003e\r\n        \u003ch1\u003e🔴 Route 53 Failover Demo\u003c/h1\u003e\r\n        \u003cdiv class=\"badge\"\u003eSECONDARY SERVER\u003c/div\u003e\r\n        \u003cp class=\"status\"\u003eFAILOVER ACTIVATED\u003c/p\u003e\r\n        \u003cp\u003eRegion: US West (Oregon)\u003c/p\u003e\r\n        \u003cp\u003eus-west-2\u003c/p\u003e\r\n        \u003cdiv class=\"alert\"\u003e\r\n            \u003cp style=\"font-size: 1em; margin: 0;\"\u003e\r\n                ⚠️ You are seeing this because\u003cbr\u003e\r\n                the PRIMARY server is unhealthy!\r\n            \u003c/p\u003e\r\n        \u003c/div\u003e\r\n    \u003c/div\u003e\r\n\u003c/body\u003e\r\n\u003c/html\u003e\r\nHTML\r\n",
+            "user_data_base64": null,
+            "user_data_replace_on_change": false,
+            "volume_tags": null,
+            "vpc_security_group_ids": [
+              "sg-015db4f165f79c5a8"
+            ]
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMCwicmVhZCI6OTAwMDAwMDAwMDAwLCJ1cGRhdGUiOjYwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMiJ9",
+          "dependencies": [
+            "aws_security_group.web_sg_secondary",
+            "data.aws_ami.amazon_linux_secondary"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route53_health_check",
+      "name": "primary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:route53:::healthcheck/3a4f34ce-2b09-4100-aeec-fa62838b1293",
+            "child_health_threshold": 0,
+            "child_healthchecks": null,
+            "cloudwatch_alarm_name": null,
+            "cloudwatch_alarm_region": null,
+            "disabled": false,
+            "enable_sni": false,
+            "failure_threshold": 3,
+            "fqdn": "",
+            "id": "3a4f34ce-2b09-4100-aeec-fa62838b1293",
+            "insufficient_data_health_status": "",
+            "invert_healthcheck": false,
+            "ip_address": "18.212.223.182",
+            "measure_latency": false,
+            "port": 80,
+            "reference_name": null,
+            "regions": null,
+            "request_interval": 30,
+            "resource_path": "/health",
+            "routing_control_arn": "",
+            "search_string": "",
+            "tags": {
+              "Name": "failover-demo-primary-health-check"
+            },
+            "tags_all": {
+              "Name": "failover-demo-primary-health-check"
+            },
+            "triggers": {},
+            "type": "HTTP"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_instance.web_primary",
+            "aws_security_group.web_sg_primary",
+            "data.aws_ami.amazon_linux_primary"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route53_health_check",
+      "name": "secondary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:route53:::healthcheck/4787a882-6194-4a63-8546-551e353fe0d3",
+            "child_health_threshold": 0,
+            "child_healthchecks": null,
+            "cloudwatch_alarm_name": null,
+            "cloudwatch_alarm_region": null,
+            "disabled": false,
+            "enable_sni": false,
+            "failure_threshold": 3,
+            "fqdn": "",
+            "id": "4787a882-6194-4a63-8546-551e353fe0d3",
+            "insufficient_data_health_status": "",
+            "invert_healthcheck": false,
+            "ip_address": "34.220.42.136",
+            "measure_latency": false,
+            "port": 80,
+            "reference_name": null,
+            "regions": null,
+            "request_interval": 30,
+            "resource_path": "/health",
+            "routing_control_arn": "",
+            "search_string": "",
+            "tags": {
+              "Name": "failover-demo-secondary-health-check"
+            },
+            "tags_all": {
+              "Name": "failover-demo-secondary-health-check"
+            },
+            "triggers": {},
+            "type": "HTTP"
+          },
+          "sensitive_attributes": [],
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_instance.web_secondary",
+            "aws_security_group.web_sg_secondary",
+            "data.aws_ami.amazon_linux_secondary"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "web_sg_primary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"].primary",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:666473280079:security-group/sg-0f04c38b8f2c7b871",
+            "description": "Allow HTTP traffic for failover demo",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-0f04c38b8f2c7b871",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTP from anywhere",
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "SSH from anywhere",
+                "from_port": 22,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 22
+              }
+            ],
+            "name": "failover-demo-web-sg-primary",
+            "name_prefix": "",
+            "owner_id": "666473280079",
+            "region": "us-east-1",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "failover-demo-sg-primary"
+            },
+            "tags_all": {
+              "Name": "failover-demo-sg-primary"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-09ddea2891b115430"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "web_sg_secondary",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"].secondary",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-west-2:666473280079:security-group/sg-015db4f165f79c5a8",
+            "description": "Allow HTTP traffic for failover demo",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-015db4f165f79c5a8",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTP from anywhere",
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "SSH from anywhere",
+                "from_port": 22,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 22
+              }
+            ],
+            "name": "failover-demo-web-sg-secondary",
+            "name_prefix": "",
+            "owner_id": "666473280079",
+            "region": "us-west-2",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "failover-demo-sg-secondary"
+            },
+            "tags_all": {
+              "Name": "failover-demo-sg-secondary"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0f1ab9b23ff979cb2"
+          },
+          "sensitive_attributes": [],
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0="
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

@@ -1,0 +1,1 @@
+## Figure out , cloud trail hosting price in aws and figure out cost to run the sql queries
