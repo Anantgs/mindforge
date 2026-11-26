@@ -1,91 +1,36 @@
-# Provider configuration for multiple regions
-# Default provider (required for Route 53 resources like health checks)
-provider "aws" {
-  region  = "us-east-1"
-  profile = "kd"
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
 }
 
+# Credentials are resolved through the standard AWS provider credential chain:
+# the default AWS CLI profile, environment variables, or an IAM role.
 provider "aws" {
   alias   = "primary"
   region  = "us-east-1"
-  profile = "kd"
 }
 
 provider "aws" {
   alias   = "secondary"
-  region  = "us-west-2"
-  profile = "kd"
+  region  = "ap-south-1"
 }
 
-# Security Group for Primary (US East)
-resource "aws_security_group" "web_sg_primary" {
-  provider    = aws.primary
-  name        = "failover-demo-web-sg-primary"
-  description = "Allow HTTP traffic for failover demo"
-
-  ingress {
-    description = "HTTP from anywhere"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "SSH from anywhere"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "failover-demo-sg-primary"
-  }
+data "aws_availability_zones" "primary" {
+  provider = aws.primary
+  state    = "available"
 }
 
-# Security Group for Secondary (US West)
-resource "aws_security_group" "web_sg_secondary" {
-  provider    = aws.secondary
-  name        = "failover-demo-web-sg-secondary"
-  description = "Allow HTTP traffic for failover demo"
-
-  ingress {
-    description = "HTTP from anywhere"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "SSH from anywhere"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "failover-demo-sg-secondary"
-  }
+data "aws_availability_zones" "secondary" {
+  provider = aws.secondary
+  state    = "available"
 }
 
-# Data source for Amazon Linux 2 AMI in US East
 data "aws_ami" "amazon_linux_primary" {
   provider    = aws.primary
   most_recent = true
@@ -93,16 +38,15 @@ data "aws_ami" "amazon_linux_primary" {
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-*-x86_64"]
   }
 
   filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
 
-# Data source for Amazon Linux 2 AMI in US West
 data "aws_ami" "amazon_linux_secondary" {
   provider    = aws.secondary
   most_recent = true
@@ -110,90 +54,119 @@ data "aws_ami" "amazon_linux_secondary" {
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-*-x86_64"]
   }
 
   filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
 
-# Primary EC2 Instance in US East
+# -----------------------------------------------------------------------------
+# Primary region: us-east-1
+# -----------------------------------------------------------------------------
+resource "aws_vpc" "primary" {
+  provider             = aws.primary
+  cidr_block           = "10.10.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name   = "failover-primary-vpc"
+    Region = "us-east-1"
+    Role   = "primary"
+  }
+}
+
+resource "aws_internet_gateway" "primary" {
+  provider = aws.primary
+  vpc_id   = aws_vpc.primary.id
+
+  tags = { Name = "failover-primary-igw" }
+}
+
+resource "aws_subnet" "primary_public" {
+  provider                = aws.primary
+  vpc_id                  = aws_vpc.primary.id
+  cidr_block              = "10.10.1.0/24"
+  availability_zone       = data.aws_availability_zones.primary.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "failover-primary-public-subnet"
+    Tier = "public"
+  }
+}
+
+resource "aws_route_table" "primary_public" {
+  provider = aws.primary
+  vpc_id   = aws_vpc.primary.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.primary.id
+  }
+
+  tags = { Name = "failover-primary-public-rt" }
+}
+
+resource "aws_route_table_association" "primary_public" {
+  provider       = aws.primary
+  subnet_id      = aws_subnet.primary_public.id
+  route_table_id = aws_route_table.primary_public.id
+}
+
+resource "aws_security_group" "primary_web" {
+  provider    = aws.primary
+  name        = "failover-primary-web-sg"
+  description = "Allow HTTP access to the primary failover demo server"
+  vpc_id      = aws_vpc.primary.id
+
+  ingress {
+    description = "HTTP for browser tests and Route 53 health checks"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "failover-primary-web-sg" }
+}
+
 resource "aws_instance" "web_primary" {
-  provider               = aws.primary
-  ami                    = data.aws_ami.amazon_linux_primary.id
-  instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.web_sg_primary.id]
+  provider                    = aws.primary
+  ami                         = data.aws_ami.amazon_linux_primary.id
+  instance_type               = "t3.micro"
+  subnet_id                   = aws_subnet.primary_public.id
+  vpc_security_group_ids      = [aws_security_group.primary_web.id]
+  associate_public_ip_address = true
 
   user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y httpd
-              systemctl start httpd
-              systemctl enable httpd
-              
-              # Create health check endpoint
-              cat > /var/www/html/health <<'HEALTH'
-              OK
-              HEALTH
-              
-              # Create main page
-              cat > /var/www/html/index.html <<'HTML'
-              <!DOCTYPE html>
-              <html>
-              <head>
-                  <title>Failover Demo - PRIMARY</title>
-                  <style>
-                      body {
-                          font-family: Arial, sans-serif;
-                          display: flex;
-                          justify-content: center;
-                          align-items: center;
-                          height: 100vh;
-                          margin: 0;
-                          background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                          color: white;
-                      }
-                      .container {
-                          text-align: center;
-                          padding: 40px;
-                          background: rgba(255, 255, 255, 0.1);
-                          border-radius: 20px;
-                          box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-                      }
-                      h1 { font-size: 3em; margin: 0; }
-                      p { font-size: 1.5em; margin: 20px 0; }
-                      .status { 
-                          font-weight: bold; 
-                          color: #FFD700;
-                          font-size: 2em;
-                      }
-                      .badge {
-                          background: #28a745;
-                          padding: 10px 20px;
-                          border-radius: 25px;
-                          display: inline-block;
-                          margin: 20px 0;
-                      }
-                  </style>
-              </head>
-              <body>
-                  <div class="container">
-                      <h1>🟢 Route 53 Failover Demo</h1>
-                      <div class="badge">PRIMARY SERVER</div>
-                      <p class="status">ACTIVE</p>
-                      <p>Region: US East (N. Virginia)</p>
-                      <p>us-east-1</p>
-                      <p style="font-size: 1em; margin-top: 30px;">
-                          This is the primary server.<br>
-                          All traffic routes here when healthy.
-                      </p>
-                  </div>
-              </body>
-              </html>
-              HTML
-              EOF
+    #!/bin/bash
+    dnf install -y httpd
+    systemctl enable --now httpd
+
+    echo OK > /var/www/html/health
+    cat > /var/www/html/index.html <<'HTML'
+    <!doctype html>
+    <html lang="en"><head><meta charset="utf-8"><title>Failover Demo - Primary</title></head>
+    <body style="font-family:Arial,sans-serif;margin:3rem;background:#11998e;color:white">
+      <h1>Route 53 Failover Demo</h1>
+      <h2>PRIMARY SERVER - ACTIVE</h2>
+      <p>Region: US East (N. Virginia)</p>
+      <p>Region code: us-east-1</p>
+      <p>This is the primary endpoint used while its Route 53 health check is healthy.</p>
+    </body></html>
+    HTML
+  EOF
 
   tags = {
     Name   = "failover-demo-primary"
@@ -203,243 +176,171 @@ resource "aws_instance" "web_primary" {
   }
 }
 
-# Elastic IP for Primary Instance
 resource "aws_eip" "primary" {
   provider = aws.primary
   instance = aws_instance.web_primary.id
   domain   = "vpc"
 
+  tags = { Name = "failover-demo-primary-eip" }
+}
+
+# -----------------------------------------------------------------------------
+# Secondary region: ap-south-1
+# -----------------------------------------------------------------------------
+resource "aws_vpc" "secondary" {
+  provider             = aws.secondary
+  cidr_block           = "10.20.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
   tags = {
-    Name = "failover-demo-primary-eip"
+    Name   = "failover-secondary-vpc"
+    Region = "ap-south-1"
+    Role   = "secondary"
   }
 }
 
-# Secondary EC2 Instance in US West
+resource "aws_internet_gateway" "secondary" {
+  provider = aws.secondary
+  vpc_id   = aws_vpc.secondary.id
+
+  tags = { Name = "failover-secondary-igw" }
+}
+
+resource "aws_subnet" "secondary_public" {
+  provider                = aws.secondary
+  vpc_id                  = aws_vpc.secondary.id
+  cidr_block              = "10.20.1.0/24"
+  availability_zone       = data.aws_availability_zones.secondary.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "failover-secondary-public-subnet"
+    Tier = "public"
+  }
+}
+
+resource "aws_route_table" "secondary_public" {
+  provider = aws.secondary
+  vpc_id   = aws_vpc.secondary.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.secondary.id
+  }
+
+  tags = { Name = "failover-secondary-public-rt" }
+}
+
+resource "aws_route_table_association" "secondary_public" {
+  provider       = aws.secondary
+  subnet_id      = aws_subnet.secondary_public.id
+  route_table_id = aws_route_table.secondary_public.id
+}
+
+resource "aws_security_group" "secondary_web" {
+  provider    = aws.secondary
+  name        = "failover-secondary-web-sg"
+  description = "Allow HTTP access to the secondary failover demo server"
+  vpc_id      = aws_vpc.secondary.id
+
+  ingress {
+    description = "HTTP for browser tests and Route 53 health checks"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "failover-secondary-web-sg" }
+}
+
 resource "aws_instance" "web_secondary" {
-  provider               = aws.secondary
-  ami                    = data.aws_ami.amazon_linux_secondary.id
-  instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.web_sg_secondary.id]
+  provider                    = aws.secondary
+  ami                         = data.aws_ami.amazon_linux_secondary.id
+  instance_type               = "t3.micro"
+  subnet_id                   = aws_subnet.secondary_public.id
+  vpc_security_group_ids      = [aws_security_group.secondary_web.id]
+  associate_public_ip_address = true
 
   user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y httpd
-              systemctl start httpd
-              systemctl enable httpd
-              
-              # Create health check endpoint
-              cat > /var/www/html/health <<'HEALTH'
-              OK
-              HEALTH
-              
-              # Create main page
-              cat > /var/www/html/index.html <<'HTML'
-              <!DOCTYPE html>
-              <html>
-              <head>
-                  <title>Failover Demo - SECONDARY</title>
-                  <style>
-                      body {
-                          font-family: Arial, sans-serif;
-                          display: flex;
-                          justify-content: center;
-                          align-items: center;
-                          height: 100vh;
-                          margin: 0;
-                          background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
-                          color: white;
-                      }
-                      .container {
-                          text-align: center;
-                          padding: 40px;
-                          background: rgba(255, 255, 255, 0.1);
-                          border-radius: 20px;
-                          box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-                      }
-                      h1 { font-size: 3em; margin: 0; }
-                      p { font-size: 1.5em; margin: 20px 0; }
-                      .status { 
-                          font-weight: bold; 
-                          color: #FFD700;
-                          font-size: 2em;
-                      }
-                      .badge {
-                          background: #dc3545;
-                          padding: 10px 20px;
-                          border-radius: 25px;
-                          display: inline-block;
-                          margin: 20px 0;
-                      }
-                      .alert {
-                          background: rgba(255, 255, 255, 0.2);
-                          padding: 15px;
-                          border-radius: 10px;
-                          margin-top: 20px;
-                      }
-                  </style>
-              </head>
-              <body>
-                  <div class="container">
-                      <h1>🔴 Route 53 Failover Demo</h1>
-                      <div class="badge">SECONDARY SERVER</div>
-                      <p class="status">FAILOVER ACTIVATED</p>
-                      <p>Region: US West (Oregon)</p>
-                      <p>us-west-2</p>
-                      <div class="alert">
-                          <p style="font-size: 1em; margin: 0;">
-                              ⚠️ You are seeing this because<br>
-                              the PRIMARY server is unhealthy!
-                          </p>
-                      </div>
-                  </div>
-              </body>
-              </html>
-              HTML
-              EOF
+    #!/bin/bash
+    dnf install -y httpd
+    systemctl enable --now httpd
+
+    echo OK > /var/www/html/health
+    cat > /var/www/html/index.html <<'HTML'
+    <!doctype html>
+    <html lang="en"><head><meta charset="utf-8"><title>Failover Demo - Secondary</title></head>
+    <body style="font-family:Arial,sans-serif;margin:3rem;background:#c0392b;color:white">
+      <h1>Route 53 Failover Demo</h1>
+      <h2>SECONDARY SERVER - FAILOVER ACTIVE</h2>
+      <p>Region: Asia Pacific (Mumbai)</p>
+      <p>Region code: ap-south-1</p>
+      <p>This endpoint is returned when the primary Route 53 health check is unhealthy.</p>
+    </body></html>
+    HTML
+  EOF
 
   tags = {
     Name   = "failover-demo-secondary"
-    Region = "us-west-2"
+    Region = "ap-south-1"
     Role   = "Secondary"
     Demo   = "Route53-Failover"
   }
 }
 
-# Elastic IP for Secondary Instance
 resource "aws_eip" "secondary" {
   provider = aws.secondary
   instance = aws_instance.web_secondary.id
   domain   = "vpc"
 
-  tags = {
-    Name = "failover-demo-secondary-eip"
-  }
+  tags = { Name = "failover-demo-secondary-eip" }
 }
 
-# Route 53 Health Check for Primary Instance
-resource "aws_route53_health_check" "primary" {
-  ip_address        = aws_eip.primary.public_ip
-  port              = 80
-  type              = "HTTP"
-  resource_path     = "/health"
-  failure_threshold = 3
-  request_interval  = 30
-
-  tags = {
-    Name = "failover-demo-primary-health-check"
-  }
-}
-
-# Route 53 Health Check for Secondary Instance (optional but recommended)
-resource "aws_route53_health_check" "secondary" {
-  ip_address        = aws_eip.secondary.public_ip
-  port              = 80
-  type              = "HTTP"
-  resource_path     = "/health"
-  failure_threshold = 3
-  request_interval  = 30
-
-  tags = {
-    Name = "failover-demo-secondary-health-check"
-  }
-}
-
-# Outputs
-output "primary_instance_id" {
-  value       = aws_instance.web_primary.id
-  description = "Instance ID of Primary server"
-}
-
+# Route 53 hosted zones, health checks, and failover records are intentionally
+# excluded. Create them manually using the IPs and /health endpoints below.
 output "primary_public_ip" {
   value       = aws_eip.primary.public_ip
-  description = "Public IP of Primary server (Elastic IP)"
-}
-
-output "primary_eip_allocation_id" {
-  value       = aws_eip.primary.id
-  description = "Allocation ID of Primary Elastic IP"
-}
-
-output "primary_public_dns" {
-  value       = aws_instance.web_primary.public_dns
-  description = "Public DNS of Primary server"
-}
-
-output "secondary_instance_id" {
-  value       = aws_instance.web_secondary.id
-  description = "Instance ID of Secondary server"
+  description = "Primary endpoint IP for the Route 53 PRIMARY record"
 }
 
 output "secondary_public_ip" {
   value       = aws_eip.secondary.public_ip
-  description = "Public IP of Secondary server (Elastic IP)"
+  description = "Secondary endpoint IP for the Route 53 SECONDARY record"
 }
 
-output "secondary_eip_allocation_id" {
-  value       = aws_eip.secondary.id
-  description = "Allocation ID of Secondary Elastic IP"
+output "primary_health_check_url" {
+  value       = "http://${aws_eip.primary.public_ip}/health"
+  description = "Use this URL when creating the primary Route 53 HTTP health check"
 }
 
-output "secondary_public_dns" {
-  value       = aws_instance.web_secondary.public_dns
-  description = "Public DNS of Secondary server"
-}
-
-output "primary_health_check_id" {
-  value       = aws_route53_health_check.primary.id
-  description = "Health Check ID for Primary"
-}
-
-output "secondary_health_check_id" {
-  value       = aws_route53_health_check.secondary.id
-  description = "Health Check ID for Secondary"
+output "secondary_health_check_url" {
+  value       = "http://${aws_eip.secondary.public_ip}/health"
+  description = "Optional secondary Route 53 HTTP health check URL"
 }
 
 output "demo_instructions" {
   value = <<-EOT
-  
-  ========================================
-  Route 53 Failover Demo - Next Steps
-  ========================================
-  
-  1. Test the instances directly:
-     PRIMARY:   http://${aws_eip.primary.public_ip}
-     SECONDARY: http://${aws_eip.secondary.public_ip}
-     
-  2. Test health check endpoints:
-     PRIMARY:   http://${aws_eip.primary.public_ip}/health
-     SECONDARY: http://${aws_eip.secondary.public_ip}/health
-  
-  3. Create Route 53 Hosted Zone and Failover Records:
-     - Create a hosted zone for your domain
-     - Create PRIMARY A record:
-       * Name: failover.yourdomain.com
-       * Type: A
-       * Value: ${aws_eip.primary.public_ip}
-       * Routing Policy: Failover
-       * Failover Record Type: Primary
-       * Health Check: ${aws_route53_health_check.primary.id}
-       * Record ID: primary-server
-     
-     - Create SECONDARY A record:
-       * Name: failover.yourdomain.com (SAME name)
-       * Type: A
-       * Value: ${aws_eip.secondary.public_ip}
-       * Routing Policy: Failover
-       * Failover Record Type: Secondary
-       * Health Check: ${aws_route53_health_check.secondary.id}
-       * Record ID: secondary-server
-  
-  4. Test Failover:
-     - Browse to http://failover.yourdomain.com (should show PRIMARY - green)
-     - Stop primary instance: aws ec2 stop-instances --instance-ids ${aws_instance.web_primary.id}
-     - Wait 2-3 minutes for health check to fail
-     - Refresh browser (should show SECONDARY - red/orange)
-     - Start primary instance: aws ec2 start-instances --instance-ids ${aws_instance.web_primary.id}
-     - Wait for health check to recover
-     - Should automatically failback to PRIMARY
-  
-  ========================================
+    1. Confirm both servers directly:
+       Primary:   http://${aws_eip.primary.public_ip}
+       Secondary: http://${aws_eip.secondary.public_ip}
+
+    2. Create a Route 53 HTTP health check manually:
+       Endpoint: ${aws_eip.primary.public_ip}
+       Path: /health
+       Port: 80
+
+    3. Create two Route 53 A records with the same name:
+       PRIMARY record value:   ${aws_eip.primary.public_ip}
+       SECONDARY record value: ${aws_eip.secondary.public_ip}
+       Routing policy: Failover
   EOT
 }

@@ -1,0 +1,14 @@
+# Ignore Terraform directories and state files
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.terraform.lock.hcl
+**/creation-time-vpc-id.txt
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/*.terraform.lock.hcl
+**/*.tfstate.*
+**/crash.log
+**/*.tfvars
+!**/terraform.tfvars.example
